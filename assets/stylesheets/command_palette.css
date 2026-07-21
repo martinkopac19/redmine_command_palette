@@ -1,0 +1,61 @@
+/* Redmine Command Palette (Previo) */
+#rcp-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: rgba(10, 10, 10, 0.45);
+  justify-content: center;
+  align-items: flex-start;
+}
+#rcp-box {
+  margin-top: 10vh;
+  width: 640px;
+  max-width: 92vw;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #E5E5E5;
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(10, 10, 10, 0.35);
+  overflow: hidden;
+  font-family: "Inter", "Noto Sans", sans-serif;
+}
+#rcp-input {
+  border: 0;
+  border-bottom: 1px solid #E5E5E5;
+  padding: 16px 18px;
+  font-size: 1.05rem;
+  outline: none;
+  color: #0A0A0A;
+  width: 100%;
+  box-sizing: border-box;
+}
+#rcp-list { overflow-y: auto; padding: 6px 0; }
+.rcp-group {
+  padding: 8px 18px 2px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #B2B2B2;
+  font-weight: 600;
+}
+.rcp-item {
+  padding: 8px 18px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.rcp-item.rcp-active { background: #F9EBEB; }
+.rcp-item.rcp-active .rcp-label { color: #B50000; }
+.rcp-label { color: #202124; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rcp-sub { color: #808080; font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rcp-empty { padding: 16px 18px; color: #B2B2B2; }
+#rcp-hint {
+  border-top: 1px solid #E5E5E5;
+  padding: 8px 18px;
+  font-size: 0.72rem;
+  color: #B2B2B2;
+}
