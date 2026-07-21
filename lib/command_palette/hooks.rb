@@ -6,11 +6,16 @@ module CommandPalette
 
       project = context[:project]
       issue   = safe_current_issue(context)
+      iproj   = issue ? issue.project : nil
+      eff_project = (project && project.persisted? ? project : iproj)
       cfg = {
         base:              Redmine::Utils.relative_url_root.to_s,
-        projectId:         (project && project.persisted? ? project.id : nil),
-        projectIdentifier: (project && project.persisted? ? project.identifier : nil),
+        projectId:         (eff_project ? eff_project.id : nil),
+        projectIdentifier: (eff_project ? eff_project.identifier : nil),
         issueId:           (issue ? issue.id : nil),
+        parentIssueId:     (issue ? issue.parent_id : nil),
+        canManageSubtasks: (iproj ? User.current.allowed_to?(:manage_subtasks, iproj) : false),
+        canAddIssues:      (iproj ? User.current.allowed_to?(:add_issues, iproj) : false),
         meId:              User.current.id
       }
       out = +''

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0
+
+- **Sub-issue / parent management** as context actions on the open issue:
+  - *Add sub-issue* — opens a pre-filled *New issue* form parented to the current
+    issue (use Redmine's native *Create and add another* to add several in a row).
+  - *Set parent…* — search and pick an issue to make it the parent (applied via
+    Redmine's bulk-update).
+  - *Remove parent* — shown only when the issue has a parent; clears it.
+  - Shown only when the user has the matching permission (`add_issues` /
+    `manage_subtasks`); all writes go through Redmine so authorization is enforced.
+
 ## 0.2.0
 
 - **Context actions** for the open issue (or ticked issues in a list): change

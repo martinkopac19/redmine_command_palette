@@ -23,6 +23,14 @@ controller), so upgrades stay clean.
   change **status**, **assignee** or **priority** from a quick sub-picker. These
   go through Redmine's own bulk-update, so they fully respect workflow and
   permissions.
+- **Sub-issue / parent management** on the open issue:
+  - **Add sub-issue** — opens a pre-filled *New issue* form parented to the
+    current issue (Redmine's native *Create and add another* adds several fast).
+  - **Set parent…** — search and pick an issue to become the parent.
+  - **Remove parent** — shown only when the issue has one.
+
+  These appear only when you have the matching permission (`add_issues` /
+  `manage_subtasks`).
 - **Quick create** — `C` opens a pre-filled *New issue* form (carries the
   current project); the palette's *Create issue* command does the same.
 - **Save as View** — `Alt + V` (or the *Save current view…* command) saves the

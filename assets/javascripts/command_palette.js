@@ -37,14 +37,25 @@
 
   // ---------- commands ----------
   function actionCommands() {
-    if (!targetIds().length) return [];
-    var n = targetIds().length;
+    var ids = targetIds();
+    if (!ids.length) return [];
+    var n = ids.length;
     var suffix = n > 1 ? (' (' + n + ' issues)') : '';
-    return [
+    var cmds = [
       { label: 'Change status' + suffix, sub: 'set status', action: 'status' },
       { label: 'Change assignee' + suffix, sub: 'set assignee', action: 'assignee' },
       { label: 'Change priority' + suffix, sub: 'set priority', action: 'priority' }
     ];
+    // Sub-issue / nadradená úloha — len na otvorenej úlohe a len keď na to má právo.
+    // (bulk_update aj tak práva vynúti serverovo; toto len skryje nedostupné akcie)
+    if (CFG.issueId && n === 1) {
+      if (CFG.canAddIssues) cmds.push({ label: 'Add sub-issue', sub: 'new child', action: 'addsub' });
+      if (CFG.canManageSubtasks) {
+        cmds.push({ label: 'Set parent…', sub: 'pick issue', action: 'setparent' });
+        if (CFG.parentIssueId) cmds.push({ label: 'Remove parent', sub: 'clear #' + CFG.parentIssueId, action: 'removeparent' });
+      }
+    }
+    return cmds;
   }
   function hasQueryForm() { return !!document.getElementById('query_form'); }
 
@@ -103,9 +114,10 @@
     input.addEventListener('input', function () { scheduleSearch(); });
   }
   function setPlaceholder() {
-    input.setAttribute('placeholder', mode === 'sub'
-      ? ('Select ' + subField + '…')
-      : 'Type a command or search…  (issues, projects, people, views)');
+    var ph = 'Type a command or search…  (issues, projects, people, views)';
+    if (mode === 'sub') ph = 'Select ' + subField + '…';
+    else if (mode === 'pick') ph = 'Search issue to set as parent…';
+    input.setAttribute('placeholder', ph);
   }
   function openPalette(prefill) {
     ensureDom(); overlay.style.display = 'flex'; isOpen = true;
@@ -117,6 +129,7 @@
 
   function doSearch() {
     if (mode === 'sub') { renderSub(); return; }
+    if (mode === 'pick') { doPickSearch(); return; }
     var raw = input.value.trim();
     var scope = ''; var qServer = raw;
     var m = raw.match(/^([ipuf])\s+(.*)$/i);
@@ -153,6 +166,32 @@
     render([{ title: 'Set ' + subField, items: items }]);
   }
 
+  // Výber nadradenej úlohy: živé hľadanie cez existujúci search endpoint (scope=i).
+  function enterPickParent() {
+    subField = 'parent'; mode = 'pick'; input.value = ''; setPlaceholder();
+    render([{ title: 'Search issue to set as parent…', items: [] }]);
+    input.focus();
+  }
+  function doPickSearch() {
+    var q = input.value.trim();
+    if (!q) { render([{ title: 'Search issue to set as parent…', items: [] }]); return; }
+    var url = base + '/command_palette/search?scope=i&q=' + encodeURIComponent(q);
+    fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : { groups: [] }; })
+      .then(function (data) {
+        var items = [];
+        (data.groups || []).forEach(function (g) {
+          (g.items || []).forEach(function (it) {
+            if (it.issue_id && String(it.issue_id) !== String(CFG.issueId)) {
+              items.push({ label: it.label, sub: it.sub, pickValue: it.issue_id });
+            }
+          });
+        });
+        render([{ title: 'Set parent to…', items: items }]);
+      })
+      .catch(function () { render([{ title: 'Set parent to…', items: [] }]); });
+  }
+
   function render(groups) {
     listEl.textContent = ''; flat = [];
     groups.forEach(function (g) {
@@ -179,7 +218,14 @@
     var it = flat[sel]; if (!it) return; var d = it.data;
     if (d.action === 'saveview') { closePalette(); saveAsView(); return; }
     if (d.action === 'addfilter') { closePalette(); focusAddFilter(); return; }
+    if (d.action === 'addsub') {
+      var u = base + '/command_palette/new?parent=' + CFG.issueId + (CFG.projectId ? ('&project=' + CFG.projectId) : '');
+      location.assign(u); return;
+    }
+    if (d.action === 'setparent') { enterPickParent(); return; }
+    if (d.action === 'removeparent') { performAction('parent', 'none'); return; }
     if (d.action) { enterSub(d.action); return; }
+    if (d.pickValue) { performAction(subField, d.pickValue); return; }
     if (d.setField) { performAction(d.setField, d.value); return; }
     if (d.url) location.assign(d.url);
   }
@@ -196,7 +242,10 @@
 
   function performAction(field, value) {
     var ids = targetIds(); if (!ids.length) { closePalette(); return; }
-    var param = field === 'status' ? 'status_id' : field === 'assignee' ? 'assigned_to_id' : 'priority_id';
+    var param = field === 'status' ? 'status_id'
+      : field === 'assignee' ? 'assigned_to_id'
+      : field === 'parent' ? 'parent_issue_id'
+      : 'priority_id';
     var body = new URLSearchParams();
     ids.forEach(function (id) { body.append('ids[]', id); });
     body.append('issue[' + param + ']', value);
@@ -220,7 +269,7 @@
       isOpen ? closePalette() : openPalette(); return;
     }
     if (isOpen) {
-      if (e.key === 'Escape') { e.preventDefault(); if (mode === 'sub') { mode = 'main'; setPlaceholder(); input.value = ''; doSearch(); } else closePalette(); }
+      if (e.key === 'Escape') { e.preventDefault(); if (mode === 'sub' || mode === 'pick') { mode = 'main'; setPlaceholder(); input.value = ''; doSearch(); } else closePalette(); }
       else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
       else if (e.key === 'Enter') { e.preventDefault(); activate(); }
