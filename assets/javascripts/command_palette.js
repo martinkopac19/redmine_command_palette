@@ -6,7 +6,7 @@
   var CFG = window.RCP_CONFIG || { base: '' };
   var base = CFG.base || '';
 
-  var overlay, input, listEl, hintEl, isOpen = false, flat = [], sel = 0, debTimer = null;
+  var overlay, input, listEl, hintEl, oldSearchEl, isOpen = false, flat = [], sel = 0, debTimer = null;
   var mode = 'main';        // 'main' | 'sub'
   var subField = null;      // 'status' | 'assignee' | 'priority'
   var subItems = [];        // [{id,label}]
@@ -98,6 +98,13 @@
     return items.filter(function (c) { return (c.label || '').toLowerCase().indexOf(lq) >= 0; });
   }
 
+  // Dotaz pre natívne vyhľadávanie: text bez scope prefixu (i/p/u/f + medzera).
+  function nativeSearchQuery() {
+    var raw = (input && input.value ? input.value : '').trim();
+    var m = raw.match(/^([ipuf])\s+(.*)$/i);
+    return m ? m[2] : raw;
+  }
+
   // ---------- DOM ----------
   function ensureDom() {
     if (overlay) return;
@@ -106,12 +113,19 @@
     input = document.createElement('input'); input.id = 'rcp-input'; input.type = 'text';
     input.setAttribute('autocomplete', 'off'); input.setAttribute('spellcheck', 'false');
     listEl = document.createElement('div'); listEl.id = 'rcp-list';
+    oldSearchEl = document.createElement('div'); oldSearchEl.id = 'rcp-oldsearch';
+    oldSearchEl.textContent = 'Show old search results';
     hintEl = document.createElement('div'); hintEl.id = 'rcp-hint';
     hintEl.textContent = '↑↓ navigate · Enter select · Esc back/close · prefixes: i/p/u/f + space';
-    box.appendChild(input); box.appendChild(listEl); box.appendChild(hintEl);
+    box.appendChild(input); box.appendChild(listEl); box.appendChild(oldSearchEl); box.appendChild(hintEl);
     overlay.appendChild(box); document.body.appendChild(overlay);
     overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) closePalette(); });
     input.addEventListener('input', function () { scheduleSearch(); });
+    // „Show old search results“ → klasické Redmine fulltextové vyhľadávanie /search
+    oldSearchEl.addEventListener('click', function () {
+      var q = nativeSearchQuery();
+      location.assign(base + '/search' + (q ? ('?q=' + encodeURIComponent(q)) : ''));
+    });
   }
   function setPlaceholder() {
     var ph = 'Type a command or search…  (issues, projects, people, views)';
@@ -290,4 +304,18 @@
     var label = (h2 ? h2.textContent.trim() : ('Issue #' + CFG.issueId)).slice(0, 80);
     pushRecent({ label: label, sub: 'issue', url: base + '/issues/' + CFG.issueId });
   }
+
+  // ---------- prepojenie s natívnym vyhľadávaním v hlavičke ----------
+  // Klik/fokus do poľa #q otvorí paletu a už napísaný text sa prenesie do nej.
+  // (Skript je injektovaný na konci <body>, hlavička už existuje.)
+  function wireNativeSearch() {
+    var q = document.querySelector('#quick-search input[name="q"]') || document.getElementById('q');
+    if (!q) return;
+    function openFrom() { if (!isOpen) openPalette(q.value); }
+    q.addEventListener('mousedown', function (e) { e.preventDefault(); openFrom(); });
+    q.addEventListener('focus', openFrom);
+    // poistka: keby znak dopadol do natívneho poľa skôr, prenes ho a vyčisti pole
+    q.addEventListener('input', function () { if (!isOpen) { openPalette(q.value); q.value = ''; } });
+  }
+  wireNativeSearch();
 })();

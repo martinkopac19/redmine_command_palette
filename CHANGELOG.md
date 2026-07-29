@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0
+
+- **Opens from the native header search** — clicking or focusing Redmine's
+  top-right search box now opens the command palette, and any text already
+  typed there is carried straight over.
+- **Show old search results** — a link at the bottom of the palette jumps to
+  Redmine's classic full-text search (`/search?q=…`) for the current text, so
+  the old search is always one click away.
+
 ## 0.3.0
 
 - **Sub-issue / parent management** as context actions on the open issue:

@@ -13,6 +13,10 @@ controller), so upgrades stay clean.
 ## Features
 
 - **Cmd/Ctrl + K** (or `/`) opens the palette from any page; `Esc` closes it.
+- **Opens from the header search box** — clicking or focusing Redmine's
+  top-right search opens the palette, and anything you've already typed carries
+  straight over. Redmine's classic full-text search stays one click away via
+  **Show old search results** at the bottom of the palette.
 - **Fuzzy search across all projects you can see** — issues, projects, people
   and saved views, grouped and ranked (open issues first, most-relevant first).
   - Find an issue by **ID** (`55310`, `#55310` or the `proj-55310` style label)
