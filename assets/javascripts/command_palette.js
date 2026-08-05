@@ -277,8 +277,19 @@
   // Pozn.: keď stránka nemá focus (prepnutá záložka / kurzor v adres. riadku),
   // stisk sa k stránke vôbec nedostane a Chrome ho spracuje sám — vtedy pomôže
   // kliknúť raz do stránky alebo použiť '/' (to prehliadač nezaberá).
+
+  // Ctrl/Cmd+K má dvojaký význam (ako v Linear): keď je v rich editore OZNAČENÝ text,
+  // patrí editoru (= vloženie odkazu) — vtedy stisk pustíme ďalej bez preventDefault.
+  // Inak (bez označenia, alebo mimo editora) otvára paletu. Ctrl/Cmd+Shift+K = vždy paleta.
+  function inEditorWithSelection(target) {
+    if (!target || !target.closest || !target.closest('.ProseMirror')) return false;
+    var s = window.getSelection && window.getSelection();
+    return !!(s && !s.isCollapsed && String(s).length > 0);
+  }
+
   function onKeydown(e) {
     if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+      if (!e.shiftKey && !isOpen && inEditorWithSelection(e.target)) return; // → rich editor: odkaz
       e.preventDefault(); e.stopPropagation();
       isOpen ? closePalette() : openPalette(); return;
     }

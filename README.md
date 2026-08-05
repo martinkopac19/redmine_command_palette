@@ -49,6 +49,7 @@ controller), so upgrades stay clean.
 | Key | Action |
 |-----|--------|
 | `Cmd/Ctrl + K` | Open / close the palette |
+| `Cmd/Ctrl + Shift + K` | Open / close the palette (always, even with text selected in the rich editor) |
 | `/` | Open the palette |
 | `↑` / `↓` | Move selection |
 | `Enter` | Open / run the selected item |
@@ -58,6 +59,11 @@ controller), so upgrades stay clean.
 | `F` | Add filter (on issue lists) |
 
 Shortcuts are ignored while you're typing in an input, textarea or editor.
+
+> **`Cmd/Ctrl + K` with the rich editor:** if you have **text selected** inside the
+> rich editor, `Cmd/Ctrl + K` belongs to the editor and inserts a link (the usual
+> meaning of that shortcut). With no selection — or anywhere outside the editor — it
+> opens the palette. `Cmd/Ctrl + Shift + K` always opens the palette.
 
 > **Note on `Cmd/Ctrl + K` in a browser:** `Ctrl + K` is also a built-in
 > browser shortcut (focus the address bar). The plugin overrides it while the

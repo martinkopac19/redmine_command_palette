@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1
+
+- **`Cmd/Ctrl + K` is now contextual** (like Linear): with text selected in the
+  rich editor it goes to the editor and inserts a link — the shortcut most people
+  expect there. Without a selection, or outside the editor, it opens the palette.
+- **`Cmd/Ctrl + Shift + K`** always opens the palette, whatever the context.
+
 ## 0.4.0
 
 - **Opens from the native header search** — clicking or focusing Redmine's
