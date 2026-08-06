@@ -9,7 +9,7 @@ Redmine::Plugin.register :redmine_command_palette do
   name 'Redmine Command Palette (Previo)'
   author 'Martin Kopáč'
   description 'Linear-style command palette (Cmd/Ctrl+K): fuzzy search across visible projects, quick navigation, context actions and quick create.'
-  version '0.4.1'
+  version '0.4.2'
   url 'https://github.com/martinkopac19/redmine_command_palette'
   requires_redmine version_or_higher: '5.0'
 end

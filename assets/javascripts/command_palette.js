@@ -116,7 +116,14 @@
     oldSearchEl = document.createElement('div'); oldSearchEl.id = 'rcp-oldsearch';
     oldSearchEl.textContent = 'Show old search results';
     hintEl = document.createElement('div'); hintEl.id = 'rcp-hint';
-    hintEl.textContent = '↑↓ navigate · Enter select · Esc back/close · prefixes: i/p/u/f + space';
+    // Pozn.: prefixy zúžia hľadanie na jeden typ (viď doSearch → &scope=). Text hovorí, čo tie
+    // písmená znamenajú — „prefixes: i/p/u/f" nikto neuhádol.
+    hintEl.textContent = '↑↓ navigate · Enter select · Esc back/close';
+    var hintScope = document.createElement('div');
+    hintScope.id = 'rcp-hint-scope';
+    hintScope.textContent = 'Search only one type — type the letter, space, then the query: ' +
+      'i = issues · p = projects · u = users · f = saved filters   (e.g. “i 4213”)';
+    hintEl.appendChild(hintScope);
     box.appendChild(input); box.appendChild(listEl); box.appendChild(oldSearchEl); box.appendChild(hintEl);
     overlay.appendChild(box); document.body.appendChild(overlay);
     overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) closePalette(); });

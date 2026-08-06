@@ -72,3 +72,5 @@
   font-size: 0.72rem;
   color: #B2B2B2;
 }
+/* druhý riadok nápovedy — vysvetľuje prefixy i/p/u/f (zúženie hľadania na jeden typ) */
+#rcp-hint-scope { margin-top: 3px; line-height: 1.5; }

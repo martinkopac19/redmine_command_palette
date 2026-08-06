@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2
+
+- **The `i/p/u/f` prefixes now explain themselves.** The footer said
+  *"prefixes: i/p/u/f + space"*, which told you nothing about what the letters do —
+  they narrow the search to a single type. It now spells it out: *i = issues,
+  p = projects, u = users, f = saved filters*, with an example. The behaviour is
+  unchanged; only the hint is.
+
 ## 0.4.1
 
 - **`Cmd/Ctrl + K` is now contextual** (like Linear): with text selected in the
