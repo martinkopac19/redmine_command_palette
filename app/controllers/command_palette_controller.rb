@@ -15,9 +15,11 @@ class CommandPaletteController < ApplicationController
   def search
     q = params[:q].to_s.strip
     scope = params[:scope].to_s
+    # stav úlohy je vlastná os, nezávislá od `scope` (ten hovorí TYP: issue/projekt/človek/pohľad)
+    state = params[:state].to_s # '', 'open', 'closed'
     groups = []
     if q.present?
-      groups << group('issues',   find_issues(q))   unless scope.present? && scope != 'i'
+      groups << group('issues',   find_issues(q, state)) unless scope.present? && scope != 'i'
       groups << group('projects', find_projects(q)) unless scope.present? && scope != 'p'
       groups << group('users',    find_users(q))    unless scope.present? && scope != 'u'
       groups << group('queries',  find_queries(q))  unless scope.present? && scope != 'f'
@@ -79,7 +81,12 @@ class CommandPaletteController < ApplicationController
      .uniq.first(12)
   end
 
-  def find_issues(q)
+  # state: '' = všetko, 'open' = len otvorené, 'closed' = len uzavreté.
+  # „Uzavreté" = issue_statuses.is_closed (u nás Closed / Resolved / Rejected) — nie zoznam
+  # názvov natvrdo, takže nový stav sa zaradí sám. issues.closed_on sa použiť NEDÁ: pri
+  # znovuotvorení úlohy sa nenuluje.
+  def find_issues(q, state = nil)
+    state = state.to_s
     out = []
     seen = {}
     push = lambda do |i|
@@ -89,7 +96,10 @@ class CommandPaletteController < ApplicationController
     end
     # ID alebo PROJ-123 / proj123 → koncové číslice = globálne issue id
     if (m = q.match(/(\d+)\s*\z/))
-      push.call(Issue.visible.find_by_id(m[1].to_i))
+      found = Issue.visible.find_by_id(m[1].to_i)
+      # prefix o/c platí aj na priamu zhodu ID — používateľ ho napísal výslovne
+      found = nil if found && state.present? && found.closed? != (state == 'closed')
+      push.call(found)
     end
     toks = tokens(q)
     if toks.any?
@@ -100,6 +110,8 @@ class CommandPaletteController < ApplicationController
         "(LOWER(#{it}.subject) LIKE '%#{t}%' OR LOWER(#{it}.description) LIKE '%#{t}%')"
       end
       base_scope = Issue.visible.joins(:status)
+      # podmienka ide na UŽ existujúci join — Issue.open by pridal druhý joins(:status)
+      base_scope = base_scope.where(issue_statuses: { is_closed: state == 'closed' }) if state.present?
       rows = base_scope.where(conds.join(' AND '))
                        .reorder(Arel.sql("#{st}.is_closed ASC, #{it}.updated_on DESC"))
                        .limit(15).to_a
@@ -122,7 +134,9 @@ class CommandPaletteController < ApplicationController
       label: "#{pident}-#{i.id}  #{i.subject}",
       sub: "#{i.status.name} · #{i.project.name}#{i.assigned_to ? " · #{i.assigned_to.name}" : ''}",
       url: "#{base}/issues/#{i.id}",
-      issue_id: i.id }
+      issue_id: i.id,
+      # strojový príznak pre klienta (zošednutie) — status.name je len text a je preložený
+      closed: i.closed? }
   end
 
   def find_projects(q)

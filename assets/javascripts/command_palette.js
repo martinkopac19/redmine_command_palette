@@ -98,11 +98,18 @@
     return items.filter(function (c) { return (c.label || '').toLowerCase().indexOf(lq) >= 0; });
   }
 
-  // Dotaz pre natívne vyhľadávanie: text bez scope prefixu (i/p/u/f + medzera).
+  // Prefix + medzera zúži hľadanie: i/p/u/f na TYP, o/c navyše na STAV úlohy
+  // (o = otvorené, c = uzavreté → scope je vždy 'i', lebo stav majú len úlohy).
+  // Jedno miesto pre celý plugin — predtým bol ten istý regex na dvoch miestach.
+  function parseQuery(raw) {
+    var m = raw.match(/^([ipufoc])\s+(.*)$/i);
+    var pfx = m ? m[1].toLowerCase() : '';
+    var state = pfx === 'o' ? 'open' : (pfx === 'c' ? 'closed' : '');
+    return { scope: state ? 'i' : pfx, state: state, q: m ? m[2] : raw };
+  }
+  // Dotaz pre natívne vyhľadávanie: text bez prefixu.
   function nativeSearchQuery() {
-    var raw = (input && input.value ? input.value : '').trim();
-    var m = raw.match(/^([ipuf])\s+(.*)$/i);
-    return m ? m[2] : raw;
+    return parseQuery((input && input.value ? input.value : '').trim()).q;
   }
 
   // ---------- DOM ----------
@@ -116,13 +123,14 @@
     oldSearchEl = document.createElement('div'); oldSearchEl.id = 'rcp-oldsearch';
     oldSearchEl.textContent = 'Show old search results';
     hintEl = document.createElement('div'); hintEl.id = 'rcp-hint';
-    // Pozn.: prefixy zúžia hľadanie na jeden typ (viď doSearch → &scope=). Text hovorí, čo tie
-    // písmená znamenajú — „prefixes: i/p/u/f" nikto neuhádol.
+    // Pozn.: prefixy zúžia hľadanie (viď parseQuery → &scope=/&state=). Text hovorí, čo tie
+    // písmená znamenajú — „prefixes: i/p/u/f" nikto neuhádol. Držať to KRÁTKE a menším
+    // písmom (#rcp-hint-scope v CSS), inak sa nápoveda láme do troch riadkov.
     hintEl.textContent = '↑↓ navigate · Enter select · Esc back/close';
     var hintScope = document.createElement('div');
     hintScope.id = 'rcp-hint-scope';
-    hintScope.textContent = 'Search only one type — type the letter, space, then the query: ' +
-      'i = issues · p = projects · u = users · f = saved filters   (e.g. “i 4213”)';
+    hintScope.textContent = 'Narrow with a letter + space:  i = issues · o = open · c = closed · ' +
+      'p = projects · u = people · f = saved views';
     hintEl.appendChild(hintScope);
     box.appendChild(input); box.appendChild(listEl); box.appendChild(oldSearchEl); box.appendChild(hintEl);
     overlay.appendChild(box); document.body.appendChild(overlay);
@@ -130,8 +138,11 @@
     input.addEventListener('input', function () { scheduleSearch(); });
     // „Show old search results“ → klasické Redmine fulltextové vyhľadávanie /search
     oldSearchEl.addEventListener('click', function () {
-      var q = nativeSearchQuery();
-      location.assign(base + '/search' + (q ? ('?q=' + encodeURIComponent(q)) : ''));
+      var p = parseQuery((input && input.value ? input.value : '').trim());
+      var url = base + '/search' + (p.q ? ('?q=' + encodeURIComponent(p.q)) : '');
+      // jadro Redmine má na to hotový parameter; pre „len uzavreté" ekvivalent nemá
+      if (p.state === 'open' && p.q) url += '&open_issues=1';
+      location.assign(url);
     });
   }
   function setPlaceholder() {
@@ -152,9 +163,8 @@
     if (mode === 'sub') { renderSub(); return; }
     if (mode === 'pick') { doPickSearch(); return; }
     var raw = input.value.trim();
-    var scope = ''; var qServer = raw;
-    var m = raw.match(/^([ipuf])\s+(.*)$/i);
-    if (m) { scope = m[1].toLowerCase(); qServer = m[2]; }
+    var parsed = parseQuery(raw);
+    var scope = parsed.scope; var qServer = parsed.q;
 
     var groups = [];
     if (!scope) {
@@ -170,7 +180,8 @@
     }
     if (!qServer) { render(groups); return; }
 
-    var url = base + '/command_palette/search?q=' + encodeURIComponent(qServer) + (scope ? '&scope=' + scope : '');
+    var url = base + '/command_palette/search?q=' + encodeURIComponent(qServer) +
+      (scope ? '&scope=' + scope : '') + (parsed.state ? '&state=' + parsed.state : '');
     fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
       .then(function (r) { return r.ok ? r.json() : { groups: [] }; })
       .then(function (data) {
@@ -204,7 +215,7 @@
         (data.groups || []).forEach(function (g) {
           (g.items || []).forEach(function (it) {
             if (it.issue_id && String(it.issue_id) !== String(CFG.issueId)) {
-              items.push({ label: it.label, sub: it.sub, pickValue: it.issue_id });
+              items.push({ label: it.label, sub: it.sub, closed: it.closed, pickValue: it.issue_id });
             }
           });
         });
@@ -219,7 +230,8 @@
       if (!g.items || !g.items.length) return;
       var h = document.createElement('div'); h.className = 'rcp-group'; h.textContent = g.title; listEl.appendChild(h);
       g.items.forEach(function (it) {
-        var row = document.createElement('div'); row.className = 'rcp-item';
+        var row = document.createElement('div');
+        row.className = 'rcp-item' + (it.closed ? ' rcp-closed' : '');
         var lab = document.createElement('div'); lab.className = 'rcp-label'; lab.textContent = it.label || ''; row.appendChild(lab);
         if (it.sub) { var s = document.createElement('div'); s.className = 'rcp-sub'; s.textContent = it.sub; row.appendChild(s); }
         var idx = flat.length;

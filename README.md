@@ -21,8 +21,12 @@ controller), so upgrades stay clean.
   and saved views, grouped and ranked (open issues first, most-relevant first).
   - Find an issue by **ID** (`55310`, `#55310` or the `proj-55310` style label)
     or by **words from its subject/description** — even a whole phrase.
-  - Optional **scope prefixes**: `i ` issues · `p ` projects · `u ` people ·
-    `f ` saved views (e.g. `p crm`).
+  - Optional **prefixes**: `i ` issues · `o ` open issues only · `c ` closed
+    issues only · `p ` projects · `u ` people · `f ` saved views (e.g. `o gateway`).
+    *Closed* means whatever your Redmine marks as a closed status — typically
+    *Closed*, *Resolved* and *Rejected*.
+  - **Closed issues are struck through and greyed**, the same way Redmine shows
+    them everywhere else, so you can see at a glance what is still live.
 - **Context actions** on the open issue (or the issues you've ticked in a list):
   change **status**, **assignee** or **priority** from a quick sub-picker. These
   go through Redmine's own bulk-update, so they fully respect workflow and

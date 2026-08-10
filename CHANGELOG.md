@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.5.0
+
+- **Closed issues are struck through and greyed** in the results, the same way
+  Redmine shows them everywhere else. Until now the only clue was the status
+  buried in the grey second line, so an archived issue looked exactly like a live
+  one. *Closed* follows Redmine's own closed-status flag, so a new status is
+  classified automatically.
+- **Two new prefixes: `o ` (open issues only) and `c ` (closed issues only)**,
+  alongside the existing `i`/`p`/`u`/`f`. Closed issues used to only sink to the
+  bottom of the list, which on a real backlog is not enough — searching
+  *"webhook"* here matches 3 open issues and 15 closed ones, and the list holds
+  15 results. The prefixes apply to searching by issue number too: `o 55310`
+  will not find an issue that is closed.
+- **The prefix hint fits on one line.** With six prefixes the old wording
+  ("Search only one type — type the letter, space, then the query…") wrapped onto
+  three lines and shouted louder than the shortcut line above it; it is now
+  shorter and set in a smaller, lighter type.
+
 ## 0.4.2
 
 - **The `i/p/u/f` prefixes now explain themselves.** The footer said

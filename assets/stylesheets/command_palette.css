@@ -52,6 +52,13 @@
 .rcp-item.rcp-active .rcp-label { color: #B50000; }
 .rcp-label { color: #202124; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rcp-sub { color: #808080; font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* uzavreté úlohy (u nás Closed / Resolved / Rejected) — rovnaká vizuálna reč, akú má jadro
+   pre uzavreté odkazy (application.css: a.issue.closed) */
+.rcp-item.rcp-closed .rcp-label { color: #999; text-decoration: line-through; }
+.rcp-item.rcp-closed .rcp-sub { color: #B2B2B2; }
+/* .rcp-item.rcp-active .rcp-label vyššie má rovnakú špecificitu (3 triedy) a je v súbore skôr,
+   takže bez tohto pravidla by vybraný uzavretý riadok stratil červené zvýraznenie */
+.rcp-item.rcp-active.rcp-closed .rcp-label { color: #B50000; text-decoration: line-through; }
 .rcp-empty { padding: 16px 18px; color: #B2B2B2; }
 #rcp-oldsearch {
   border-top: 1px solid #E5E5E5;
@@ -72,5 +79,7 @@
   font-size: 0.72rem;
   color: #B2B2B2;
 }
-/* druhý riadok nápovedy — vysvetľuje prefixy i/p/u/f (zúženie hľadania na jeden typ) */
-#rcp-hint-scope { margin-top: 3px; line-height: 1.5; }
+/* druhý riadok nápovedy — vysvetľuje prefixy i/o/c/p/u/f (zúženie hľadania).
+   Menšie písmo a jemnejšia farba: so šiestimi prefixami sa text pri 0.72rem lámal
+   do troch riadkov a prebíjal riadok s klávesami. */
+#rcp-hint-scope { margin-top: 3px; line-height: 1.45; font-size: 0.66rem; color: #C4C4C4; }
