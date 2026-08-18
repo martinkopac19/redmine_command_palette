@@ -113,4 +113,6 @@ session. No data leaves the server and no third-party service is involved.
 
 ## License
 
+Copyright (C) 2026 Martin Kopáč
+
 GPL-2.0 — see [LICENSE](LICENSE).
