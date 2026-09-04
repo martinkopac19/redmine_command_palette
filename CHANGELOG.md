@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.6.0
+
+- **A filter can now be filled in without touching the mouse.** "Add filter…" (or
+  the F shortcut) used to only focus Redmine’s native dropdown; the operator and
+  the values still had to be clicked. The palette now walks all three steps:
+  field → operator → values.
+- **Filters already on the list can be changed too**, not just new ones added.
+  They appear first, under "Change filter", with how they are set right now
+  (e.g. "Status — is  New, In Progress"), the operator in use is marked
+  *current*, and the values already chosen come up pre-ticked, so one Tab adds
+  another and Enter removes one. Until now a filter, once set, could only be
+  changed with the mouse — and Status is set on every issue list by default.
+- **Enter** on a value applies the filter straight away — the common case is one
+  value. **Tab** adds a value and keeps the list open, so several can be picked in
+  a row; an "Apply filter (n selected)" row appears on top once something is
+  selected.
+- Operators that need no value ("none", "any", "today"…) apply immediately
+  instead of asking for one, and text, number and date filters are typed straight
+  into the palette.
+- **Esc goes back one step** (values → operator → field) rather than closing the
+  palette, so a wrong turn costs one keystroke.
+- Results are ranked by how closely they match, so typing "status" no longer
+  offers "Last status change" ahead of "Status".
+- Built on Redmine’s own `addFilter`, and applied by submitting `#query_form` —
+  the same thing the native Apply button does. Fields already in use are hidden,
+  matching what the native dropdown allows.
+- If a filter whose values load from the server cannot fetch them, the form is
+  **not** submitted; the native dropdown is focused instead, so the action is
+  never silently lost.
+- `extra/filter_cdp_test.mjs` drives a real browser over the DevTools protocol.
+  Programmatic input does not start the palette in a headless browser, so a test
+  built on it reports success everywhere — including where the code is broken.
+
 ## 0.5.0
 
 - **Closed issues are struck through and greyed** in the results, the same way

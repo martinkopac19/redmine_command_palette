@@ -10,6 +10,8 @@
   var mode = 'main';        // 'main' | 'sub'
   var subField = null;      // 'status' | 'assignee' | 'priority'
   var subItems = [];        // [{id,label}]
+  var fstep = null;         // krok filtra: 'field' | 'op' | 'value'
+  var fctx = null;          // { field, name, type, op, values, picked }
 
   function isTypingTarget(el) {
     if (!el) return false;
@@ -147,6 +149,7 @@
   }
   function setPlaceholder() {
     var ph = 'Type a command or search…  (issues, projects, people, views)';
+    if (mode === 'filter') ph = filterPlaceholder();
     if (mode === 'sub') ph = 'Select ' + subField + '…';
     else if (mode === 'pick') ph = 'Search issue to set as parent…';
     input.setAttribute('placeholder', ph);
@@ -161,6 +164,7 @@
 
   function doSearch() {
     if (mode === 'sub') { renderSub(); return; }
+    if (mode === 'filter') { renderFilter(); return; }
     if (mode === 'pick') { doPickSearch(); return; }
     var raw = input.value.trim();
     var parsed = parseQuery(raw);
@@ -224,6 +228,179 @@
       .catch(function () { render([{ title: 'Set parent to…', items: [] }]); });
   }
 
+
+  // ---------- vyplnenie filtra klávesnicou: pole → operátor → hodnoty ----------
+  // Dáta aj samotné pridanie filtra robí filter_flow.js nad natívnym `addFilter`.
+  function FF() { return (window.RCP_FILTERS || {}).filterFlow; }
+
+  function filterPlaceholder() {
+    if (fstep === 'field') return 'Filter by…';
+    if (fstep === 'op') return fctx.name + ' — how?';
+    if (fctx && !FF().isListType(fctx.type)) return fctx.name + ' — type a value and press Enter';
+    return fctx.name + ' — pick values (Tab adds more)';
+  }
+
+  function enterFilter() {
+    var ff = FF();
+    // Keby stránka nemala natívne filtre alebo sa zmenilo jadro, radšej starý
+    // spôsob (zaostriť natívny výber) než rozbitá paleta.
+    if (!ff || !ff.ready()) { closePalette(); focusAddFilter(); return; }
+    mode = 'filter'; fstep = 'field'; fctx = null;
+    input.value = ''; setPlaceholder(); renderFilter(); input.focus();
+  }
+
+  function filterPickField(field) {
+    var ff = FF();
+    var cur = ff.isActive(field) ? ff.currentOf(field) : null;
+    fctx = { field: field, name: ff.nameOf(field), type: ff.typeOf(field),
+             op: null, values: null, picked: [], current: cur };
+    var ops = ff.opsFor(fctx.type);
+    // Jediný možný operátor netreba ponúkať — preskoč rovno na hodnoty.
+    if (ops.length === 1) { filterPickOp(ops[0]); return; }
+    fstep = 'op'; input.value = ''; setPlaceholder(); renderFilter();
+  }
+
+  function filterPickOp(op) {
+    var ff = FF();
+    fctx.op = op;
+    if (!ff.needsValue(op)) { filterApply(); return; }   // napr. „je prázdne", „dnes"
+    fstep = 'value'; input.value = ''; setPlaceholder();
+    /* Pri úprave existujúceho filtra prednastavíme to, čo je vybrané teraz —
+       ale len ak človek ostal pri tom istom operátore. Pri zmene operátora by
+       staré hodnoty mohli byť nezmyselné (napr. „is" → „between"). */
+    if (fctx.current && fctx.current.op === op) {
+      fctx.picked = (fctx.current.values || []).slice();
+    }
+    if (ff.isListType(fctx.type)) {
+      render([{ title: 'Loading…', items: [] }]);
+      ff.loadValues(fctx.field, function (vals) {
+        fctx.values = ff.valueItems(vals);
+        renderFilter(); input.focus();
+      });
+    } else {
+      if (fctx.picked.length) input.value = fctx.picked[0];
+      renderFilter();
+    }
+  }
+
+  // Enter = vyber a rovno použi (najčastejší prípad je jedna hodnota),
+  // Tab = pridaj do výberu a zostaň v zozname (viac hodnôt naraz).
+  function filterChooseValue(id, keepOpen) {
+    var i = fctx.picked.indexOf(id);
+    if (i >= 0) fctx.picked.splice(i, 1); else fctx.picked.push(id);
+    if (keepOpen) {
+      renderFilter();
+      /* Po pridaní prvej hodnoty pribudne navrch riadok "Apply" a celý zoznam
+         sa posunie o jeden. Render vracia kurzor na nulu, takže bez tohto by
+         skončil inde, než kde človek stál — a ďalší Tab by odobral hodnotu,
+         ktorú práve pridal. Vraciame sa presne na tú istú hodnotu. */
+      for (var k = 0; k < flat.length; k++) {
+        if (flat[k].data && flat[k].data.fvalue === id) { setSel(k); break; }
+      }
+      return;
+    }
+    if (!fctx.picked.length) { renderFilter(); return; }
+    filterApply();
+  }
+
+  function filterApply() {
+    var ff = FF();
+    var vals = fctx.picked.slice();
+    var field = fctx.field, op = fctx.op;
+    /* Polia, ktoré si hodnoty doťahujú zvlášť (Assignee, Author…), rieši natívny
+       addFilter tak, že si ich najprv stiahne a sám seba zavolá znova — teda
+       ASYNCHRÓNNE. Keby sme formulár odoslali hneď, filter by v ňom ešte nebol
+       a zmizol by bez stopy; presne to sa dialo pri operátore "none". Preto si
+       hodnoty vypýtame vopred — potom už addFilter dobehne synchrónne. */
+    ff.loadValues(field, function () {
+      closePalette();
+      if (!ff.apply(field, op, vals)) focusAddFilter();
+    });
+    fctx = null; fstep = null;
+  }
+
+  function filterBack() {
+    if (fstep === 'value' && fctx) {
+      var ops = FF().opsFor(fctx.type);
+      // Ak sa krok s operátorom preskočil (bol len jeden), niet sa kam vrátiť — späť na pole.
+      if (ops.length > 1) { fstep = 'op'; fctx.picked = []; input.value = ''; setPlaceholder(); renderFilter(); return; }
+    }
+    if (fstep === 'op' || fstep === 'value') {
+      fstep = 'field'; fctx = null; input.value = ''; setPlaceholder(); renderFilter(); return;
+    }
+    mode = 'main'; fstep = null; fctx = null; input.value = ''; setPlaceholder(); doSearch();
+  }
+
+  function renderFilter() {
+    var ff = FF(); if (!ff) return;
+    var q = input.value.trim().toLowerCase();
+    var match = function (s) { return !q || String(s).toLowerCase().indexOf(q) >= 0; };
+    /* Zoradenie podľa tesnosti zhody. Bez neho 'status' ponúklo ako prvé
+       „Last status change" — obyčajné `indexOf` nerozlíši, či dopyt sedí na
+       začiatku názvu alebo len niekde v strede. */
+    var rank = function (label) {
+      if (!q) return 0;
+      var l = String(label).toLowerCase();
+      if (l === q) return 0;
+      if (l.indexOf(q) === 0) return 1;
+      if (l.indexOf(' ' + q) >= 0) return 2;   // dopyt začína niektoré slovo
+      return 3;
+    };
+    var byRank = function (arr, key) {
+      return arr.map(function (x, i) { return { x: x, r: rank(x[key]), i: i }; })
+                .sort(function (a, b) { return a.r - b.r || a.i - b.i; })
+                .map(function (w) { return w.x; });
+    };
+
+    if (fstep === 'field') {
+      var all = byRank(ff.fieldItems().filter(function (f) { return match(f.label); }), 'label');
+      // Filtre, ktoré na zozname už sú, ponúkame zvlášť a s tým, ako sú
+      // nastavené teraz — sú to tie, ktoré človek najčastejšie chce zmeniť.
+      var inUse = all.filter(function (f) { return f.active; })
+        .map(function (f) { return { label: f.label, sub: f.summary, ffield: f.field }; });
+      var fresh = all.filter(function (f) { return !f.active; })
+        .map(function (f) { return { label: f.label, ffield: f.field }; });
+      var groups = [];
+      if (inUse.length) groups.push({ title: 'Change filter', items: inUse });
+      if (fresh.length) groups.push({ title: 'Add filter', items: fresh });
+      render(groups);
+      return;
+    }
+
+    if (fstep === 'op') {
+      var curOp = fctx.current ? fctx.current.op : null;
+      var ops = ff.opsFor(fctx.type)
+        .map(function (op) { return { label: ff.opLabel(op), sub: op === curOp ? 'current' : '', fop: op }; })
+        .filter(function (it) { return match(it.label); });
+      render([{ title: fctx.name + (fctx.current ? '  ·  now: ' + ff.summaryOf(fctx.field) : ''), items: ops }]);
+      return;
+    }
+
+    // hodnoty
+    if (!ff.isListType(fctx.type)) {
+      var typed = input.value.trim();
+      var hint = fctx.type === 'date' || fctx.type === 'date_past' ? 'YYYY-MM-DD' :
+                 (ff.DAYS.indexOf(fctx.op) >= 0 ? 'number of days' : 'value');
+      var rows = typed ? [{ label: typed, sub: 'press Enter to apply', ftext: typed }]
+                       : [{ label: '(type a ' + hint + ')', sub: '', fnoop: true }];
+      render([{ title: fctx.name + ' ' + ff.opLabel(fctx.op), items: rows }]);
+      return;
+    }
+
+    var picked = fctx.picked;
+    var list = byRank((fctx.values || []).filter(function (v) { return match(v.label); }), 'label')
+      .map(function (v) {
+        var on = picked.indexOf(v.id) >= 0;
+        return { label: (on ? '✓ ' : '') + v.label, sub: on ? 'selected' : '', fvalue: v.id };
+      });
+    var groups = [];
+    if (picked.length) {
+      groups.push({ title: 'Ready', items: [{ label: 'Apply filter (' + picked.length + ' selected)', fapply: true }] });
+    }
+    groups.push({ title: fctx.name + ' ' + ff.opLabel(fctx.op) + '  ·  Tab = add more', items: list });
+    render(groups);
+  }
+
   function render(groups) {
     listEl.textContent = ''; flat = [];
     groups.forEach(function (g) {
@@ -249,8 +426,13 @@
 
   function activate() {
     var it = flat[sel]; if (!it) return; var d = it.data;
+    if (d.ffield) { filterPickField(d.ffield); return; }
+    if (d.fop) { filterPickOp(d.fop); return; }
+    if (d.fvalue !== undefined) { filterChooseValue(d.fvalue, false); return; }
+    if (d.fapply) { filterApply(); return; }
+    if (d.ftext !== undefined) { fctx.picked = [d.ftext]; filterApply(); return; }
     if (d.action === 'saveview') { closePalette(); saveAsView(); return; }
-    if (d.action === 'addfilter') { closePalette(); focusAddFilter(); return; }
+    if (d.action === 'addfilter') { enterFilter(); return; }
     if (d.action === 'addsub') {
       var u = base + '/command_palette/new?parent=' + CFG.issueId + (CFG.projectId ? ('&project=' + CFG.projectId) : '');
       location.assign(u); return;
@@ -313,7 +495,20 @@
       isOpen ? closePalette() : openPalette(); return;
     }
     if (isOpen) {
-      if (e.key === 'Escape') { e.preventDefault(); if (mode === 'sub' || mode === 'pick') { mode = 'main'; setPlaceholder(); input.value = ''; doSearch(); } else closePalette(); }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        // V toku filtra sa Esc vracia o KROK späť (hodnoty → operátor → pole),
+        // nie rovno von — inak by sa preklik cez tri kroky nedal opraviť.
+        if (mode === 'filter') { filterBack(); return; }
+        if (mode === 'sub' || mode === 'pick') { mode = 'main'; setPlaceholder(); input.value = ''; doSearch(); }
+        else closePalette();
+      }
+      else if (e.key === 'Tab' && mode === 'filter' && fstep === 'value') {
+        // Tab = pridaj hodnotu do výberu a zostaň v zozname (viac hodnôt naraz).
+        // Zámerne nie medzerník — ten sa píše do vyhľadávacieho poľa.
+        var cur = flat[sel];
+        if (cur && cur.data && cur.data.fvalue !== undefined) { e.preventDefault(); filterChooseValue(cur.data.fvalue, true); }
+      }
       else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
       else if (e.key === 'Enter') { e.preventDefault(); activate(); }
@@ -322,7 +517,11 @@
     if (isTypingTarget(e.target)) return;
     if (e.altKey && (e.key === 'v' || e.key === 'V')) { e.preventDefault(); saveAsView(); return; }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if ((e.key === 'f' || e.key === 'F') && document.getElementById('add_filter_select')) { e.preventDefault(); focusAddFilter(); return; }
+    // F otvorí rovnaký tok ako "Add filter…" v palete: pole → operátor → hodnoty.
+    // (Predtým iba zaostrilo natívny výber a zvyšok sa musel doklikať myšou.)
+    if ((e.key === 'f' || e.key === 'F') && document.getElementById('add_filter_select')) {
+      e.preventDefault(); openPalette(); enterFilter(); return;
+    }
     if (e.key === '/') { e.preventDefault(); openPalette(); }
     else if (e.key === 'c' || e.key === 'C') { e.preventDefault(); location.assign(base + '/command_palette/new' + (CFG.projectId ? ('?project=' + CFG.projectId) : '')); }
   }

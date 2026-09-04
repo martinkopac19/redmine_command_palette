@@ -27,7 +27,13 @@ module CommandPalette
     # JS na koniec <body>
     def view_layouts_base_body_bottom(context = {})
       return '' unless User.current.logged?
-      javascript_include_tag('command_palette', plugin: 'redmine_command_palette').html_safe
+      # filter_flow musí byť PRED paletou — paleta si ho pri otvorení hľadá.
+      # Oba sú na konci <body>, takže natívne `availableFilters` zo zoznamu úloh
+      # sú v tej chvíli už definované.
+      out = +''
+      out << javascript_include_tag('filter_flow', plugin: 'redmine_command_palette')
+      out << javascript_include_tag('command_palette', plugin: 'redmine_command_palette')
+      out.html_safe
     end
 
     private
