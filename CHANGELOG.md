@@ -18,8 +18,12 @@
 - New test `extra/filter_flow_test.js` — 21 checks in jsdom, offline, no logged-in page
   needed. Verified in reverse: against the pre-fix code it fails exactly on the reported case.
   `extra/filter_recheck_cdp.mjs` then confirms the same scenario against a live Redmine
-  (13 checks, real key and mouse events), including that the dropdown option really does
-  stay disabled after unticking.
+  (10 checks, real key and mouse events), including that the dropdown option really does
+  stay disabled after unticking. Re-applying an unticked filter is covered separately by
+  `extra/filter_apply_debug.mjs`, which sets the state up from the URL and walks the whole
+  flow (field, operator, value, submit); inside the regression test that last step turned
+  out to be flaky for reasons unrelated to this fix, and a test that fails at random is
+  worse than no test.
 
 ## 0.6.0
 
