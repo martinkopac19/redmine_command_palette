@@ -124,7 +124,13 @@
     if (sel) {
       Array.prototype.forEach.call(sel.options, function (o) {
         if (!o.value || seen[o.value]) return;
-        if (o.disabled) return;
+        /* `o.disabled` sa ZÁMERNE nekontroluje. Jadro voľbu zakáže v `addFilter`
+           (application-legacy.js:193) a pri odškrtnutí checkboxu ju späť
+           NEPOVOLÍ — `toggleFilter` rieši len operátor a hodnoty. Odškrtnutý
+           filter tak zostal v ponuke zakázaný a zároveň neaktívny, čím vypadol
+           z oboch skupín a paleta na „prio" hlásila „No results".
+           Pridanie je bezpečné: `apply()` voľbu pred `addFilter` sám povolí
+           (`resetRow`), takže sa nedá skončiť na zakázanej voľbe. */
         var f = av[o.value];
         out.push({ field: o.value, label: o.textContent.trim(), type: f ? f.type : 'string', active: false });
       });

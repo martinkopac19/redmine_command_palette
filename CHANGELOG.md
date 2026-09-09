@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.1
+
+- **A filter you unticked with the mouse is offered again.** Reported case: pick a filter
+  through the palette, then untick its checkbox in the filter table — typing its name into
+  the palette returned "No results", so the only way back was the mouse.
+  - **Cause:** core `addFilter` disables the field's `option` in `#add_filter_select`
+    (`application-legacy.js:193`) and unticking the checkbox does **not** re-enable it —
+    `toggleFilter` only deals with the operator and the values. The filter was therefore
+    *disabled in the dropdown* and *inactive* at the same time, which dropped it out of both
+    palette groups: it is not offered "to change" (not active) and it was skipped when
+    building the "to add" list (option disabled).
+  - **Fix:** the disabled flag is no longer used to exclude a field. It stays safe because
+    `apply()` re-enables the option before calling `addFilter` (`resetRow`), so the flow can
+    never end up on a disabled option. An unticked filter is offered as a *new* one — the
+    person just switched it off, so pre-filling its old values would be the surprising choice.
+- New test `extra/filter_flow_test.js` — 21 checks in jsdom, offline, no logged-in page
+  needed. Verified in reverse: against the pre-fix code it fails exactly on the reported case.
+  `extra/filter_recheck_cdp.mjs` then confirms the same scenario against a live Redmine
+  (13 checks, real key and mouse events), including that the dropdown option really does
+  stay disabled after unticking.
+
 ## 0.6.0
 
 - **A filter can now be filled in without touching the mouse.** "Add filter…" (or
