@@ -17,7 +17,11 @@
     if (!el) return false;
     if (el.isContentEditable) return true;
     var tag = (el.tagName || '').toLowerCase();
-    return tag === 'input' || tag === 'textarea' || tag === 'select';
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+    // Téma kreslí selecty cez `appearance: base-select` — v otvorenom zozname má fokus
+    // <option>, nie <select>, a písmeno (napr. „C" pri hľadaní „Category") by inak
+    // spustilo skratku namiesto vyhľadania v zozname.
+    return !!(el.closest && el.closest('select'));
   }
   function csrf() { var m = document.querySelector('meta[name="csrf-token"]'); return m ? m.getAttribute('content') : ''; }
 

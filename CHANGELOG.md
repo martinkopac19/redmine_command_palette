@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.2
+
+- **Typing a letter in an open dropdown no longer fires a shortcut.** Reported case: open
+  *Add filter*, type `C` to jump to *Category* — the browser opened a new issue instead.
+  `F` opened the filter flow the same way.
+  - **Cause:** the Previo theme renders selects with `appearance: base-select`. While the list
+    is open, focus is on the `<option>`, not on the `<select>`, so the "user is typing"
+    check did not recognise it. Anything inside a `<select>` now counts as typing.
+
 ## 0.6.1
 
 - **A filter you unticked with the mouse is offered again.** Reported case: pick a filter
